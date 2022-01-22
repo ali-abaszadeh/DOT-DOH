@@ -1,0 +1,84 @@
+---
+# vars file
+
+zabbix_api_url: https://nms.sic.net/api_jsonrpc.php
+zabbix_user: "m.seyedhaji"
+zabbix_password: "Aa123456"
+content_type: "Content-Type: application/json-rpc"
+json_files_path: /opt/inventory-engine/ansible/roles/get-zabbix-info/files/resource_usage.dir
+
+excel_loc: /opt/inventory-engine/ansible/roles/get-zabbix-info/files/resource_usage.dir/tmp/usage.csv
+repository_path: /var/www/html/repo/
+
+server_type:
+- Computes
+- Controllers
+
+resources:
+- cpu
+- disk
+- memory
+
+
+json_files:
+- get_History.json
+- get_History2.json
+- get_Host.json
+- get_Itemid_cpu_usage.json
+- get_Itemid_disk_usage.json
+- get_Itemid_memory_usage.json
+- get_Itemid_serverid.json
+- auth.json
+
+# Please dont change order in the hosts list
+zabbix_hosts:
+- cloud-prep-cont-s1 
+- cloud-prep-cont-s2 
+- cloud-prep-cont-s03  
+- cloud-prep-comp-s001  
+- cloud-prep-comp-s002 
+- cloud-prep-comp-s003
+- cloud-prep-comp-s004 
+- cloud-prep-comp-s005 
+- cloud-cont-s1 
+- cloud-cont-s2 
+- cloud-cont-s3
+- cloud-comp-s001 
+- cloud-comp-s002 
+- cloud-comp-s003 
+- cloud-comp-s004 
+- cloud-comp-s005 
+- cloud-comp-s006 
+- cloud-comp-s007 
+- cloud-comp-f002
+- cloud-comp-f003 
+- cloud-comp-f004 
+- cloud-comp-f006 
+- cloud-comp-f007 
+- cloud-comp-f008 
+
+zabbix_ILO_hosts:
+- cloud-ILO-prep-cont-s1
+- cloud-ILO-prep-cont-s2
+- cloud-ILO-prep-cont-s3
+- cloud-ILO-prep-comp-s001
+- cloud-ILO-prep-comp-s002
+- cloud-ILO-prep-comp-s003
+- cloud-ILO-prep-comp-s004
+- cloud-ILO-prep-comp-s005
+- cloud-ILO-cont-s1
+- cloud-ILO-cont-s2
+- cloud-ILO-cont-s3
+- cloud-ILO-comp-s001
+- cloud-ILO-comp-s002
+- cloud-ILO-comp-s003
+- cloud-ILO-comp-s004
+- cloud-ILO-comp-s005
+- cloud-ILO-comp-s006
+- cloud-ILO-comp-s007
+- cloud-ILO-comp-f002
+- cloud-ILO-comp-f003
+- cloud-ILO-comp-f004
+- cloud-ILO-comp-f006
+- cloud-ILO-comp-f007
+- cloud-ILO-comp-f008

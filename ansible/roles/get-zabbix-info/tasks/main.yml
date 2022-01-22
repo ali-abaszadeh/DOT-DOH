@@ -1,0 +1,314 @@
+---
+
+### Remove old temporary directory if it exist
+- name: Remove tmp directory and temporary files
+  file:
+    path: '{{ json_files_path }}/tmp'
+    state: absent
+
+### Remove old usage.csv file
+- name: Remove old usage.csv file
+  file:
+    path: '{{ repository_path }}/usage.csv'
+    state: absent
+
+# Create temp directory
+- name: Create a temporary directory
+  file:
+    path: '{{ json_files_path }}/tmp'
+    state: directory
+
+####################################################################################################
+
+# Remove old token from json files
+
+- name: Validate if a String or line is present in the file and delete auth line
+  tags: example1
+  lineinfile:
+    path: '{{ json_files_path }}/{{ item }}'
+    # String to Search
+    regexp: "auth"
+    # State is set to Absent to remove if the Searching Line is found
+    state: absent
+    backup: no
+  with_items: '{{ json_files }}'   
+  register: example1out
+
+####################################################################################################
+
+# Get a token for connect to the Zabbix API in order to extract inforation
+- name: Create token to connect to Zabbix server
+  shell: curl -k -s -X  POST -H '{{ content_type }}' -d @roles/get-zabbix-info/files/resource_usage.dir/auth.json '{{ zabbix_api_url }}' | jq -r '.result'
+  register: zabbix_token
+
+- debug:
+    msg: "{{zabbix_token.stdout}}"
+
+######################################################################################################
+
+# Insert zabbix token to the json files
+- name: Insert zabbix token in the json files
+  tags: lineinfileexample6_2
+  lineinfile:
+    path: '{{ json_files_path }}/{{ item }}'
+    insertbefore: "id.*"
+    line: '  "auth": "{{ zabbix_token.stdout }}",'
+    state: present
+  with_items: '{{ json_files }}'
+  register: lineinfileexample6_2
+
+###################################################################################################
+
+# Create get_Host.json files
+
+- name: config get_Host.json file considering zabbix hosts
+  shell: jq -r '.params.filter.host |= "'"{{ item }}"'"' '{{ json_files_path }}'/get_Host.json  > '{{ json_files_path }}'/tmp/test_'{{ item }}' && mv '{{ json_files_path }}'/tmp/test_'{{ item }}' '{{ json_files_path }}'/tmp/get_Host_'{{ item }}'.json
+  with_items: 
+  - '{{ zabbix_hosts }}'
+  - '{{ zabbix_ILO_hosts }}'
+
+################################################################################################
+
+# Get host id form zabbix hosts
+- name: Get host id
+  shell: curl -k -s -X  POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_Host_'{{ item }}'.json '{{ zabbix_api_url }}' | jq -r '.result[] .hostid'
+  register: hostid
+  with_items: '{{zabbix_hosts}}'
+
+- name: print hostid values
+  debug:
+    msg: "{{ hostid.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx 
+
+################################################################################################
+
+# create get item files for cpu, ram, disk usage and also server id
+
+- name: Create get item file for cpu usage
+  shell: jq -r '.params.hostids |= "'"{{ hostid.results[my_idx]['stdout'] }}"'"' '{{ json_files_path }}'/get_Itemid_cpu_usage.json > '{{ json_files_path }}'/tmp/test_cpu_'{{item}}' && cat '{{ json_files_path }}'/tmp/test_cpu_'{{item}}' >  '{{ json_files_path }}'/tmp/get_Itemid_cpu_usage_'{{item}}'.json
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx 
+
+- name: Create get item id file for memory usage
+  shell: jq -r '.params.hostids |= "'"{{ hostid.results[my_idx]['stdout'] }}"'"' '{{ json_files_path }}'/get_Itemid_memory_usage.json > '{{ json_files_path }}'/tmp/test_memory_'{{item}}' && cat '{{ json_files_path }}'/tmp/test_memory_'{{item}}' >  '{{ json_files_path }}'/tmp/get_Itemid_memory_usage_'{{item}}'.json
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+
+- name: Create get item id file disk usage
+  shell: jq -r '.params.hostids |= "'"{{ hostid.results[my_idx]['stdout'] }}"'"' '{{ json_files_path }}'/get_Itemid_disk_usage.json > '{{ json_files_path }}'/tmp/test_disk_'{{item}}' && cat '{{ json_files_path }}'/tmp/test_disk_'{{item}}' >  '{{ json_files_path }}'/tmp/get_Itemid_disk_usage_'{{item}}'.json
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+#################################################################################################
+
+- name: Get host id for zabbix ILO hosts
+  shell: curl -k -s -X  POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_Host_'{{ item }}'.json '{{ zabbix_api_url }}' | jq -r '.result[] .hostid'
+  register: zabbix_ilo_hostid
+  with_items: '{{zabbix_ILO_hosts}}'
+
+- name: print hostid values for zabbix ILO hosts
+  debug:
+    msg: "{{ zabbix_ilo_hostid.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_ILO_hosts}}"
+  loop_control:
+    index_var: my_idx 
+
+# Create get_item_id file for server id parameter
+- name: Create get_item_id file for serverid parameter
+  shell: jq -r '.params.hostids |= "'"{{ zabbix_ilo_hostid.results[my_idx]['stdout'] }}"'"' '{{ json_files_path }}'/get_Itemid_serverid.json > '{{ json_files_path }}'/tmp/test_serverid_'{{item}}' && cat '{{ json_files_path }}'/tmp/test_serverid_'{{item}}' >  '{{ json_files_path }}'/tmp/get_Itemid_serverid_'{{item}}'.json
+  loop: "{{zabbix_ILO_hosts}}"
+  loop_control:
+    index_var: my_idx
+    
+###########################################################################################
+
+## Get cpu usage information
+- name: Get item id for cpu usage
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_Itemid_cpu_usage_'{{item}}'.json '{{ zabbix_api_url }}'  | jq -r '.result[] .itemid'
+  register: cpu_itemid
+  with_items: '{{zabbix_hosts}}'
+  
+- name: print cpu itemid values
+  debug:
+    msg: "{{ cpu_itemid.results[my_idx]['stdout']}}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+- name: Create history file for cpu usage
+  shell: jq -r '.params.itemids |= "'"{{cpu_itemid.results[my_idx]['stdout']}}"'"' '{{ json_files_path }}'/get_History2.json > '{{ json_files_path }}'/tmp/test2_history_cpu_'{{item}}' && cat '{{ json_files_path }}'/tmp/test2_history_cpu_'{{item}}' >> '{{ json_files_path }}'/tmp/get_History_cpu_'{{item}}'.json
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+- name: Get history from the Zabbix API for cpu usage
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_History_cpu_'{{item}}'.json '{{ zabbix_api_url }}' | jq -r '.result | .[] | .value'
+  register: cpu_itemid_result2
+  with_items:
+    - "{{zabbix_hosts}}"
+
+- name: print cpu_usage values
+  debug:
+    msg: "{{ cpu_itemid_result2.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+#############################
+
+# Get memory usage information
+- name: Get item id for memory usage
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_Itemid_memory_usage_'{{item}}'.json '{{ zabbix_api_url }}'  | jq -r '.result[] .itemid'
+  register: memory_itemid
+  with_items: '{{zabbix_hosts}}'
+  
+
+- name: print memory itemid values
+  debug:
+    msg: "{{ memory_itemid.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+
+- name: Create history file for memory usage
+  shell: jq -r '.params.itemids |= "'"{{memory_itemid.results[my_idx]['stdout']}}"'"' '{{ json_files_path }}'/get_History2.json > '{{ json_files_path }}'/tmp/test2_history_memory_'{{ item }}' && cat '{{ json_files_path }}'/tmp/test2_history_memory_'{{ item }}' >> '{{ json_files_path }}'/tmp/get_History_memory_'{{ item }}'.json
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+
+- name: Get history from the Zabbix API for memory usage
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_History_memory_'{{ item }}'.json '{{ zabbix_api_url }}' | jq -r '.result | .[] | .value'
+  register: memory_itemid_result2
+  with_items:
+    - "{{zabbix_hosts}}"
+
+
+- name: print memory_usage values
+  debug:
+    msg: "{{ memory_itemid_result2.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+######################################################################
+
+## Get disk usage information
+- name: Get item id for disk usage
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_Itemid_disk_usage_'{{item}}'.json '{{ zabbix_api_url }}'  | jq -r '.result[] .itemid'
+  register: disk_itemid
+  with_items: '{{zabbix_hosts}}'
+  
+
+- name: print disk itemid values
+  debug:
+    msg: "{{ disk_itemid.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+
+- name: Create history file for disk usage
+  shell: jq -r '.params.itemids |= "'"{{disk_itemid.results[my_idx]['stdout']}}"'"' '{{ json_files_path }}'/get_History2.json > '{{ json_files_path }}'/tmp/test2_history_disk_'{{ item }}' && cat '{{ json_files_path }}'/tmp/test2_history_disk_'{{ item }}' >> '{{ json_files_path }}'/tmp/get_History_disk_'{{ item }}'.json
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+
+- name: Get history from the Zabbix API for disk usage
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_History_disk_'{{ item }}'.json '{{ zabbix_api_url }}' | jq -r '.result | .[] | .value'
+  register: disk_itemid_result2
+  with_items:
+    - "{{zabbix_hosts}}"
+
+
+- name: print disk_usage values
+  debug:
+    msg: "{{ disk_itemid_result2.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+################################################################
+
+## Get server id information
+- name: Get item id for server_id
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_Itemid_serverid_'{{item}}'.json '{{ zabbix_api_url }}'  | jq -r '.result[] .itemid'
+  register: serverid_itemid
+  with_items: '{{zabbix_ILO_hosts}}'
+  
+
+- name: print itemid values for server id parameter
+  debug:
+    msg: "{{ serverid_itemid.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_ILO_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+
+- name: Create history file for server id
+  shell: jq -r '.params.itemids |= "'"{{serverid_itemid.results[my_idx]['stdout']}}"'"' '{{ json_files_path }}'/get_History2_Serverid.json > '{{ json_files_path }}'/tmp/test2_history_serverid_'{{ item }}' && cat '{{ json_files_path }}'/tmp/test2_history_serverid_'{{ item }}' >> '{{ json_files_path }}'/tmp/get_History_serverid_'{{ item }}'.json
+  loop: "{{zabbix_ILO_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+
+- name: Get history from the Zabbix API for server id
+  shell: curl -k -s -X POST -H '{{ content_type }}' -d @'{{ json_files_path }}'/tmp/get_History_serverid_'{{ item }}'.json '{{ zabbix_api_url }}' | jq -r '.result | .[] | .value'
+  register: serverid_itemid_result2
+  with_items:
+    - "{{zabbix_ILO_hosts}}"
+
+- name: print server id values
+  debug:
+    msg: "{{ serverid_itemid_result2.results[my_idx]['stdout'] }}"
+    #msg: serverid_itemid_result2
+  loop: "{{zabbix_ILO_hosts}}"
+  loop_control:
+    index_var: my_idx
+
+#################################################################
+
+# Create the usage.csv file
+
+- name: Creating excel spreadsheet
+  file:
+    path: "{{ excel_loc }}"
+    state: touch
+  delegate_to: localhost
+
+- name: Adding initial line to spreadsheet
+  lineinfile:
+    insertafter: EOF
+    dest: "{{ excel_loc }}"
+    line: Zabbiz_Host,Server_ID,CPU_Usage,RAM_Usage,Disk_Usage
+  delegate_to: localhost
+
+- name: Adding values to spreadsheet
+  lineinfile:
+    insertafter: EOF
+    dest: "{{ excel_loc }}"
+    line: "{{ item }},{{ serverid_itemid_result2.results[my_idx]['stdout'] }},{{ cpu_itemid_result2.results[my_idx]['stdout'] }},{{ memory_itemid_result2.results[my_idx]['stdout'] }},{{ disk_itemid_result2.results[my_idx]['stdout'] }}"
+  loop: "{{zabbix_hosts}}"
+  loop_control:
+    index_var: my_idx
+  delegate_to: localhost
+
+# Move new usage.csv file to repository
+- name: Move new usage.csv file to repository
+  shell: mv "{{ excel_loc }}" "{{repository_path}}"
+
+### Remove temporary directory
+#- name: Remove tmp directory and temporary files
+#  file:
+#    path: '{{ json_files_path }}/tmp'
+#    state: absent
+
+#############################################################################

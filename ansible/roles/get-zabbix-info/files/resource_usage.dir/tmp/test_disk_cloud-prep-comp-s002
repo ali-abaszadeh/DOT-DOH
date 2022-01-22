@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "method": "item.get",
+  "params": {
+    "output": "extend",
+    "hostids": "12076",
+    "search": {
+      "name": "CPU utilization"
+    },
+    "sortfield": "name"
+  },
+  "auth": "6f20d7c26190d7dc04fd66845e271562",
+  "id": 1
+}

@@ -1,0 +1,9 @@
+---
+
+- hosts: usage
+  gather_facts: false
+  connection: local
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  roles:
+  - role: get-zabbix-info

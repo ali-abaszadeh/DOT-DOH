@@ -1,0 +1,47 @@
+[all:vars]
+community=testdatacenter
+
+[hpservers:children]
+cloud
+
+[cloud]
+172.29.17.1
+172.29.17.2  community=testdatacenter
+172.29.17.3  community=testdatacenter
+172.29.17.4  community=testdatacenter
+172.29.17.5  community=testdatacenter
+172.29.17.6  community=testdatacenter
+172.29.17.7  community=testdatacenter
+172.29.17.8  community=testdatacenter
+172.29.17.9
+172.29.17.10
+172.29.17.11
+172.29.17.12
+172.29.17.13
+172.29.17.14
+172.29.17.15  community=testdatacenter
+172.29.17.17
+172.29.17.18
+172.29.14.53
+172.29.14.65
+172.29.14.85   community=mon-s1
+172.29.14.81
+172.29.14.82
+172.29.14.9   community=testdatacenter
+172.29.14.10
+172.29.15.13  community=testdatacenter
+172.29.15.13  community=testdatacenter
+
+[cloud_inactive]
+172.29.70.80
+172.29.71.152
+172.29.72.105  community=testdatacenter
+172.29.73.137  community=testdatacenter
+172.29.74.17   community=testdatacenter
+172.29.75.106  community=testdatacenter
+
+[notworking]
+172.32.40.10
+
+[usage]
+localhost

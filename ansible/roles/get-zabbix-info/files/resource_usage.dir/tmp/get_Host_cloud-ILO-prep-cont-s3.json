@@ -1,0 +1,11 @@
+{
+  "jsonrpc": "2.0",
+  "method": "host.get",
+  "params": {
+    "filter": {
+      "host": "cloud-ILO-prep-cont-s3"
+    }
+  },
+  "auth": "6f20d7c26190d7dc04fd66845e271562",
+  "id": 1
+}

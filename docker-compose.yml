@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  nginx-ssl:
+    image: nginx-ssl-inventory
+    container_name: nginx-ssl
+    volumes:
+     - '/var/www/html/repo:/var/www/html/repo'
+     - ./conf.d/:/etc/nginx/conf.d
+    ports:
+     - "443:443" 
+
