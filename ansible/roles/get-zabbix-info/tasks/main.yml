@@ -306,9 +306,9 @@
   shell: mv "{{ excel_loc }}" "{{repository_path}}"
 
 ### Remove temporary directory
-#- name: Remove tmp directory and temporary files
-#  file:
-#    path: '{{ json_files_path }}/tmp'
-#    state: absent
+- name: Remove tmp directory and temporary files
+  file:
+    path: '{{ json_files_path }}/tmp'
+    state: absent
 
 #############################################################################
